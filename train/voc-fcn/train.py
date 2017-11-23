@@ -1,3 +1,7 @@
+import sys
+sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/net-lsm/pytorch-semantic-segmentation/')
+
+
 import datetime
 import os
 import random
@@ -10,10 +14,12 @@ from torch.autograd import Variable
 from torch.backends import cudnn
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
+import torch.cuda as cuda
 
 import utils.transforms as extended_transforms
 from datasets import voc
 from models import *
+# from models import fcn16s
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 cudnn.benchmark = True
@@ -36,7 +42,10 @@ args = {
 
 
 def main(train_args):
-    net = FCN8s(num_classes=voc.num_classes).cuda()
+    if cuda.is_available():
+        net = FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
+    else:
+        net = FCN8s(num_classes=voc.num_classes,pretrained=False)
 
     if len(train_args['snapshot']) == 0:
         curr_epoch = 1
@@ -106,9 +115,13 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args):
         inputs, labels = data
         assert inputs.size()[2:] == labels.size()[1:]
         N = inputs.size(0)
-        inputs = Variable(inputs).cuda()
-        labels = Variable(labels).cuda()
 
+        if cuda.is_available():
+            inputs = Variable(inputs).cuda()
+            labels = Variable(labels).cuda()
+        else:
+            inputs = Variable(inputs)
+            labels = Variable(labels)
         optimizer.zero_grad()
         outputs = net(inputs)
         assert outputs.size()[2:] == labels.size()[1:]
@@ -138,6 +151,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
     for vi, data in enumerate(val_loader):
         inputs, gts = data
         N = inputs.size(0)
+
         inputs = Variable(inputs, volatile=True).cuda()
         gts = Variable(gts, volatile=True).cuda()
 
