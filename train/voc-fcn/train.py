@@ -1,5 +1,6 @@
 import sys
-sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/net-lsm/pytorch-semantic-segmentation/')
+# sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/net-lsm/pytorch-semantic-segmentation/')
+sys.path.insert(0, '~/level-sets/pytorch-semantic-segmentation/')
 
 
 import datetime
