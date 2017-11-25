@@ -23,8 +23,8 @@ s.write('#SBATCH --account=def-oberman\n')
 # s.write('#SBATCH --time='+time.strftime('%H:%M:%S',t)+' \t\t# max time (HH:MM:SS)\n')
 s.write('#SBATCH --job-name='+'test\n')
 s.write('#SBATCH --mem='+str(mem)+'M \t\t\t# memory per node\n')
-if not args.no_cuda:
-    s.write('#SBATCH --gres=gpu:'+str(gpus)+' \t\t# request 4 gpus per node\n')
+# if not args.no_cuda:
+#     s.write('#SBATCH --gres=gpu:'+str(gpus)+' \t\t# request 4 gpus per node\n')
 s.write('#SBATCH --cpus-per-task='+str(cpus) +'\n')
 s.write('#SBATCH --output='+log_dir+'/log.out\n')
 s.write('#SBATCH --signal=15@30 \t\t#Send SIGTERM 30 seconds before time out\n')
