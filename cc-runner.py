@@ -3,7 +3,7 @@
 import argparse
 import subprocess
 import time, os
-import numpy as np
+# import numpy as np
 
 # parser = argparse.ArgumentParser('Script for running code for image segmentation')
 # parser.add_argument('--dataset', type=str, default='mnist', metavar='DS',
