@@ -53,4 +53,4 @@ print('python -u ~/level-set/pytorch-image-segmentation/train/voc-fcn/train.py' 
 #         '\t--model '+args.model
 #     ,file=ccscript, flush=True)
 
-subprocess.call(['sbatch' ,'ccrunner.sh'])
+subprocess.call(['sbatch' ,'cc-runner.sh'])
