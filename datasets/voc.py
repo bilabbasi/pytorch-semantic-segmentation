@@ -8,7 +8,7 @@ from torch.utils import data
 
 num_classes = 21
 ignore_label = 255
-root = '/home/babbasi/scratch/VOC/'
+root = '/home/babbasi/scratch/VOC/' # Compute canada server pwd
 
 '''
 color map
