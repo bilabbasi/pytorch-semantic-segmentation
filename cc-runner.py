@@ -30,7 +30,7 @@ s.write('#SBATCH --cpus-per-task='+str(cpus) +'\n')
 # s.write('#SBATCH --output='+'~/level-set/pytorch-image-segmentation/train/voc-fcn/train-test.py' + '\n')
 s.write('#SBATCH --signal=15@30 \t\t#Send SIGTERM 30 seconds before time out\n')
 s.write('\n\nsource ~/anaconda3/bin/activate\n')
-s.write('python -u ~/level-set/pytorch-image-segmentation/train/voc-fcn/train-test.py')
+s.write('python -u ~/level-set/pytorch-image-segmentation/train/voc-fcn/train-test.py',flush=True)
 # print('python -u ~/level-set/pytorch-image-segmentation/train/voc-fcn/train.py' ,file=ccscript, flush=True)
 # print('python -u ~/optimization/bgd/main.py  --data ~/scratch'+ '\\\n'
 #         '\t--momentum ' + str(args.momentum) + '\\\n'
