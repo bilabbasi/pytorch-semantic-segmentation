@@ -35,12 +35,11 @@ args = {
     'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
 
-
+log_dir = './train-data'
 def main(train_args):
     net = FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
 
     curr_epoch = 1
-    train_args['best_record'] = {'epoch': 0, 'val_loss': 1e10, 'acc': 0, 'acc_cls': 0, 'mean_iu': 0, 'fwavacc': 0}
 
     net.train()
 
@@ -63,38 +62,40 @@ def main(train_args):
     ])
 
     train_set = voc.VOC('train', transform=input_transform, target_transform=target_transform)
-    train_loader = DataLoader(train_set, batch_size=1, num_workers=4, shuffle=True)
-    val_set = voc.VOC('val', transform=input_transform, target_transform=target_transform)
-    val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False)
+    train_loader = DataLoader(train_set, batch_size=1, num_workers=4, shuffle=True)[]
 
     criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label).cuda()
 
     optimizer = optim.SGD(net.params,lr=0.1)
 
+    os.makedirs(log_dir,exist_ok=True)
+    training_log = open(log_dir + '/store_data.csv','w')
     for epoch in range(curr_epoch, train_args['epoch_num'] + 1):
-        train(train_loader, net, criterion, optimizer, epoch, train_args)
+        train(train_loader, net, criterion, optimizer, epoch, train_args,training_log)
 
-
-def train(train_loader, net, criterion, optimizer, epoch, train_args):
+    training_log.close()
+    
+def train(train_loader, net, criterion, optimizer, epoch, train_args,training_log):
     train_loss = AverageMeter()
     curr_iter = (epoch - 1) * len(train_loader)
     for i, data in enumerate(train_loader):
         inputs, labels = data
-        assert inputs.size()[2:] == labels.size()[1:]
         N = inputs.size(0)
 
         inputs = Variable(inputs).cuda()
         labels = Variable(labels).cuda()
 
         optimizer.zero_grad()
-        outputs = net(inputs)
 
+        outputs = net(inputs)
         loss = criterion(outputs, labels) / N
+
         loss.backward()
+
         optimizer.step()
 
         train_loss.update(loss.data[0], N)
-
+        training_log.write(loss.data[0] + '\n')
         curr_iter += 1
 
 
