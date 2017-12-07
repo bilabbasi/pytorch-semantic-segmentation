@@ -1,6 +1,6 @@
 import sys
 # sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/net-lsm/pytorch-semantic-segmentation/') # cpu root
-sys.path.insert(0, '~/level-sets/pytorch-semantic-segmentation/') # compute canada root
+sys.path.insert(0, '/home/babbasi/level-sets/pytorch-semantic-segmentation/') # compute canada root
 
 
 import datetime
@@ -8,23 +8,21 @@ import os
 import random
 
 import torchvision.transforms as standard_transforms
-import torchvision.utils as vutils
 from torch import optim
 from torch.autograd import Variable
 from torch.backends import cudnn
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader
 import torch.cuda as cuda
 
 import utils.transforms as extended_transforms
 from datasets import voc
-from models import *
+from models import fcn8s
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 cudnn.benchmark = True
 
 args = {
-    'epoch_num': 300,
+    'epoch_num': 1,
     'lr': 1e-10,
     'weight_decay': 1e-4,
     'momentum': 0.95,
@@ -37,7 +35,7 @@ args = {
 
 log_dir = '~/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
 def main(train_args):
-    net = FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
+    net = fcn8s.FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
 
     curr_epoch = 1
 
@@ -68,7 +66,7 @@ def main(train_args):
 
     optimizer = optim.SGD(net.params,lr=0.1)
 
-    os.makedirs(log_dir+ '/store_data.csv',,exist_ok=True)
+    os.makedirs(log_dir+ '/store_data.csv',exist_ok=True)
     training_log = open(log_dir, 'w')
     for epoch in range(curr_epoch, train_args['epoch_num'] + 1):
         train(train_loader, net, criterion, optimizer, epoch, train_args,training_log)
