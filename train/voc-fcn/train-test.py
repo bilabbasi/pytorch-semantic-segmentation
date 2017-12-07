@@ -68,8 +68,8 @@ def main(train_args):
 
     optimizer = optim.SGD(net.params,lr=0.1)
 
-    os.makedirs(log_dir,exist_ok=True)
-    training_log = open(log_dir + '/store_data.csv','w')
+    os.makedirs(log_dir+ '/store_data.csv',,exist_ok=True)
+    training_log = open(log_dir, 'w')
     for epoch in range(curr_epoch, train_args['epoch_num'] + 1):
         train(train_loader, net, criterion, optimizer, epoch, train_args,training_log)
 
