@@ -33,7 +33,7 @@ args = {
     'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
 
-log_dir = '~/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
+log_dir = '/home/babbasi/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
 def main(train_args):
     net = fcn8s.FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
 
