@@ -8,4 +8,4 @@
 
 
 source ~/anaconda3/bin/activate
-python -u ~/level-set/pytorch-image-segmentation/train/voc-fcn/train.py
+python -u ~/level-sets/pytorch-image-segmentation/train/voc-fcn/train-test.py

@@ -123,7 +123,7 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args):
         else:
             inputs = Variable(inputs)
             labels = Variable(labels)
-        
+
         optimizer.zero_grad()
         outputs = net(inputs)
         assert outputs.size()[2:] == labels.size()[1:]
