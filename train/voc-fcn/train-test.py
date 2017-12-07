@@ -95,7 +95,7 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args,training_lo
         optimizer.step()
 
         train_loss.update(loss.data[0], N)
-        training_log.write(loss.data[0] + '\n',flush=True)
+        training_log.write(loss.data[0] + '\n')
         curr_iter += 1
 
 
