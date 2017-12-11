@@ -7,12 +7,12 @@ import datetime
 import os
 import random
 
-import torchvision.transforms as standard_transforms
 from torch import optim
 from torch.autograd import Variable
 from torch.backends import cudnn
 from torch.utils.data import DataLoader
 import torch.cuda as cuda
+import torchvision.transforms as standard_transforms
 
 import utils.transforms as extended_transforms
 from datasets import voc
