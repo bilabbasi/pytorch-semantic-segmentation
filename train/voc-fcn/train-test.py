@@ -1,6 +1,6 @@
 import sys
 # sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/net-lsm/pytorch-semantic-segmentation/') # cpu root
-# sys.path.insert(0, '/home/babbasi/level-sets/pytorch-semantic-segmentation/') # compute canada root
+sys.path.insert(0, '/home/babbasi/level-sets/pytorch-semantic-segmentation/') # compute canada root
 
 
 import datetime
