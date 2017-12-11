@@ -60,7 +60,7 @@ def main(train_args):
     ])
 
     train_set = voc.VOC('train', transform=input_transform, target_transform=target_transform)
-    train_loader = DataLoader(train_set, batch_size=1, num_workers=4, shuffle=True)[]
+    train_loader = DataLoader(train_set, batch_size=1, num_workers=4, shuffle=True)
 
     criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label).cuda()
 
@@ -86,6 +86,7 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args,training_lo
         optimizer.zero_grad()
 
         outputs = net(inputs)
+
         loss = criterion(outputs, labels) / N
 
         loss.backward()
