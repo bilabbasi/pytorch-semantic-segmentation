@@ -14,7 +14,7 @@ from torch.utils.data import DataLoader
 import torch.cuda as cuda
 import torchvision.transforms as standard_transforms
 
-import utils.transforms as extended_transforms
+from utils import transforms as extended_transforms
 from datasets import voc
 from models import fcn8s
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
