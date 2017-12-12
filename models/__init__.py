@@ -1,5 +1,5 @@
 import sys
-sys.path.insert(0, '/home/babbasi/level-sets/pytorch-semantic-segmentation/models') # compute canada root
+sys.path.insert(0, '/home/babbasi/level-sets/pytorch-semantic-segmentation') # compute canada root
 
 from .duc_hdc import *
 from .fcn16s import *
