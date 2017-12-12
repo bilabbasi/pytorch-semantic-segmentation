@@ -14,7 +14,7 @@ import torch.cuda as cuda
 import torchvision.transforms as standard_transforms
 
 import utils.transforms as extended_transforms
-from models import *
+import models.fcn8s as model
 from datasets import voc
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
@@ -35,7 +35,7 @@ args = {
 log_dir = '/home/babbasi/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
 # model = models.fcn8s()
 def main(train_args):
-    net = models.FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
+    net = model.FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
 
     curr_epoch = 1
 
