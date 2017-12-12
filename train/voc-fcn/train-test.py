@@ -13,8 +13,7 @@ from torch.utils.data import DataLoader
 import torch.cuda as cuda
 import torchvision.transforms as standard_transforms
 
-import utils
-# import utils.transforms as extended_transforms
+import utils.transforms as extended_transforms
 from datasets import voc
 from models import fcn8s
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
@@ -48,8 +47,7 @@ def main(train_args):
         standard_transforms.ToTensor(),
         standard_transforms.Normalize(*mean_std)
     ])
-    # target_transform = extended_transforms.MaskToTensor()
-    target_transform = transforms.MaskToTensor()
+    target_transform = extended_transforms.MaskToTensor()
     restore_transform = standard_transforms.Compose([
         extended_transforms.DeNormalize(*mean_std),
         standard_transforms.ToPILImage(),
