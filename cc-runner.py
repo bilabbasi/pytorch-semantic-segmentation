@@ -1,4 +1,4 @@
-# # !/usr/bin/env python3
+# soursdf# !/usr/bin/env python3
 # This script generates a batch script to be run on the Compute Canada server
 import argparse
 import subprocess
