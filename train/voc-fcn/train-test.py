@@ -31,7 +31,7 @@ args = {
     'val_save_to_img_file': False,
     'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
-
+print('hello')
 log_dir = '/home/babbasi/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
 # model = models.fcn8s()
 def main(train_args):
