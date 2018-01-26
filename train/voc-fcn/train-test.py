@@ -1,11 +1,12 @@
 import sys
-# sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/net-lsm/pytorch-semantic-segmentation/') # cpu root
-sys.path.insert(0, '/home/babbasi/level-sets/pytorch-semantic-segmentation/') # compute canada root
+sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/semantic-segmentation/pytorch-semantic-segmentation') # local root
+# sys.path.insert(0, '/home/babbasi/level-sets/pytorch-semantic-segmentation/') # compute canada root
 
 import datetime
 import os
 import random
 
+import torch as th
 from torch import optim
 from torch.autograd import Variable
 from torch.backends import cudnn
@@ -14,7 +15,9 @@ import torch.cuda as cuda
 import torchvision.transforms as standard_transforms
 
 import utils.transforms as extended_transforms
-import models.fcn8s as model
+# import models.fcn8s as model
+# import models.fcn16s as model
+import models.u_net as model
 from datasets import voc
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
@@ -31,11 +34,16 @@ args = {
     'val_save_to_img_file': False,
     'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
-print('hello')
-log_dir = '/home/babbasi/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
-# model = models.fcn8s()
+# log_dir = '/home/babbasi/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
+log_dir = './train/voc-fcn' # local log directory
 def main(train_args):
-    net = model.FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
+    # net = model.FCN8s(num_classes=voc.num_classes,pretrained=False)
+    # net = model.FCN16VGG(num_classes=voc.num_classes,pretrained=False)
+    net = model.UNet(num_classes=voc.num_classes)
+
+
+    if th.cuda.is_available():
+        net=net.cuda()
 
     curr_epoch = 1
 
@@ -62,13 +70,18 @@ def main(train_args):
     train_set = voc.VOC('train', transform=input_transform, target_transform=target_transform)
     train_loader = DataLoader(train_set, batch_size=1, num_workers=4, shuffle=True)
 
-    criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label).cuda()
+    if th.cuda.is_available():
+        criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label).cuda()
+    else:
+        criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label)
+    optimizer = optim.SGD(net.parameters(),lr=0.01)
 
-    optimizer = optim.SGD(net.params,lr=0.1)
+    # os.makedirs(log_dir + '/store_data.csv',exist_ok=True)
+    training_log = open('store_data.csv', 'w')
+    # scheduler = ReduceLROnPlateau(optimizer, 'min', patience=train_args['lr_patience'], min_lr=1e-10, verbose=True)
 
-    os.makedirs(log_dir + '/store_data.csv',exist_ok=True)
-    training_log = open(log_dir, 'w')
     for epoch in range(curr_epoch, train_args['epoch_num'] + 1):
+        print('epoch = {}\n'.format(curr_epoch))
         train(train_loader, net, criterion, optimizer, epoch, train_args,training_log)
 
     training_log.close()
@@ -76,16 +89,24 @@ def main(train_args):
 def train(train_loader, net, criterion, optimizer, epoch, train_args,training_log):
     train_loss = AverageMeter()
     curr_iter = (epoch - 1) * len(train_loader)
-    for i, data in enumerate(train_loader):
+    i = 0
+    for data in train_loader:
         inputs, labels = data
+        assert inputs.size()[2:] == labels.size()[1:]
         N = inputs.size(0)
 
-        inputs = Variable(inputs).cuda()
-        labels = Variable(labels).cuda()
+        if th.cuda.is_available():
+            inputs = Variable(inputs).cuda()
+            labels = Variable(labels).cuda()
+        else:
+            inputs = Variable(inputs)
+            labels = Variable(labels)
 
         optimizer.zero_grad()
 
         outputs = net(inputs)
+        assert outputs.size()[2:] == labels.size()[1:]
+        assert outputs.size()[1] == voc.num_classes
 
         loss = criterion(outputs, labels) / N
 
@@ -93,11 +114,11 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args,training_lo
 
         optimizer.step()
 
-        print(loss.data[0] + '\n')
+        print(loss.data[0])
         train_loss.update(loss.data[0], N)
-        training_log.write(loss.data[0] + '\n')
+        training_log.write(str(loss.data[0]))
         curr_iter += 1
-
+        i+=1
 
 if __name__ == '__main__':
     main(args)

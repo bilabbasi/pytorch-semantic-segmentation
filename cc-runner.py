@@ -1,4 +1,4 @@
-# soursdf# !/usr/bin/env python3
+# # !usr/bin/env python3
 # This script generates a batch script to be run on the Compute Canada server
 import argparse
 import subprocess
@@ -27,7 +27,7 @@ s.write('#SBATCH --account=def-oberman\n')
 # s.write('#SBATCH --time='+time.strftime('%H:%M:%S',t)+' \t\t# max time (HH:MM:SS)\n')
 s.write('#SBATCH --job-name='+'test\n')
 s.write('#SBATCH --mem='+str(mem)+'M \t\t\t# memory per node\n')
-s.write('#SBATCH --cpus-per-task='+str(cpus) +'\n')
+s.write('#SBATCH --cpus-per-task='+str(cpus) +'\n')y
 s.write('#SBATCH --output='+log_dir+'/log.out\n')
 s.write('#SBATCH --signal=15@30 \t\t#Send SIGTERM 30 seconds before time out\n')
 s.write('\n\nsource ~/anaconda3/bin/activate\n')

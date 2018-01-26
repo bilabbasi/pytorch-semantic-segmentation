@@ -1,8 +1,10 @@
 import torch
 import torch.nn.functional as F
 from torch import nn
+import sys
+sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/semantic-segmentation/pytorch-semantic-segmentation') # compute canada root
 
-from ..utils import initialize_weights
+from utils import initialize_weights
 
 
 class _EncoderBlock(nn.Module):

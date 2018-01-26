@@ -30,7 +30,7 @@ class FCN8s(nn.Module):
             2) allow cropping in order to match size of different layers' feature maps
         Note that the cropped part corresponds to a part of the 100 padding
         Spatial information of different layers' feature maps cannot be align exactly because of cropping, which is bad
-        '''
+        '''         
         features[0].padding = (100, 100)
 
         for f in features:

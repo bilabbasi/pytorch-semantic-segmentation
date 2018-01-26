@@ -8,8 +8,8 @@ from torch.utils import data
 
 num_classes = 21
 ignore_label = 255
-root = '/home/babbasi/scratch/VOC/' # Compute canada server pwd
-
+# root = '/home/babbasi/scratch/VOC/' # Compute canada server pwd
+root = '/Users/bilalabbasi/Dropbox/Projects/semantic-segmentation/VOC/'
 '''
 color map
 0=background, 1=aeroplane, 2=bicycle, 3=bird, 4=boat, 5=bottle # 6=bus, 7=car, 8=cat, 9=chair, 10=cow, 11=diningtable,
