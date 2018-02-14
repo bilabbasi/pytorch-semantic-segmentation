@@ -4,34 +4,31 @@ import argparse
 import subprocess
 import time, os
 # import numpy as np
+from parsers import parser
+parser = argparse.ArgumentParser('Script for running code for image segmentation')
+parser.add_argument('--cpus',type=int,default=2)
+parser.add_argument('--gpus',type=int,default=2)
+parser.add_argument('--m',type=int,default=64000)
+parser.add_argument('---fname',type=str,default='test')
 
-# parser = argparse.ArgumentParser('Script for running code for image segmentation')
-# parser.add_argument('--dataset', type=str, default='mnist', metavar='DS',
-#                     choices=['mnist','cifar10'],
-#                     help='dataset. Either "cifar10" or "mnist". (default: mnist)')
-# parser.add_argument('-model', type=str,default='fcn16s')
-
-# args = parser.parse_args()
-
-gpus = 4
-mem = 16000
-cpus = 16
-log_dir = os.path.join('..','logs')
-
+gpus = args.gpus
+mem = args.mem
+cpus = args.cpu
+#log_dir = os.path.join('..','logs')
 s = open('cc-runner.sh','w')
-log_dir = '/home/babbasi/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
 
+log_dir = '/home/level-set-rnn/logs'
 # For Python 2
 s.write('#!/bin/bash\n')
 s.write('#SBATCH --account=def-oberman\n')
 # s.write('#SBATCH --time='+time.strftime('%H:%M:%S',t)+' \t\t# max time (HH:MM:SS)\n')
-s.write('#SBATCH --job-name='+'test\n')
 s.write('#SBATCH --mem='+str(mem)+'M \t\t\t# memory per node\n')
-s.write('#SBATCH --cpus-per-task='+str(cpus) +'\n')y
+s.write('#SBATCH --cpus-per-task='+str(cpus) +'\n')
 s.write('#SBATCH --output='+log_dir+'/log.out\n')
+s.write('#SBATCH --gpus=gpu:'+str(gpus)+'\n')
 s.write('#SBATCH --signal=15@30 \t\t#Send SIGTERM 30 seconds before time out\n')
 s.write('\n\nsource ~/anaconda3/bin/activate\n')
-s.write('python -u ~/level-sets/pytorch-semantic-segmentation/train/voc-fcn/train-test.py')
+s.write('python -u /home/babbasi/level-set-rnn/train/voc-fcn/train.py')
 s.close()
 
 # For Python 3

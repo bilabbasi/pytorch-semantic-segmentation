@@ -35,9 +35,11 @@ class FCN16VGG(nn.Module):
         fc6 = nn.Conv2d(512, 4096, kernel_size=7)
         fc6.weight.data.copy_(classifier[0].weight.data.view(4096, 512, 7, 7))
         fc6.bias.data.copy_(classifier[0].bias.data)
+        
         fc7 = nn.Conv2d(4096, 4096, kernel_size=1)
         fc7.weight.data.copy_(classifier[3].weight.data.view(4096, 4096, 1, 1))
         fc7.bias.data.copy_(classifier[3].bias.data)
+        
         score_fr = nn.Conv2d(4096, num_classes, kernel_size=1)
         score_fr.weight.data.zero_()
         score_fr.bias.data.zero_()

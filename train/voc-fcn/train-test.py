@@ -1,11 +1,10 @@
 import sys
-sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/semantic-segmentation/pytorch-semantic-segmentation') # local root
-# sys.path.insert(0, '/home/babbasi/level-sets/pytorch-semantic-segmentation/') # compute canada root
+#sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/semantic-segmentation/pytorch-semantic-segmentation') # local root
+sys.path.insert(0,'/home/babbasi/level-set-rnn') # compute canada root
 
 import datetime
 import os
 import random
-
 import torch as th
 from torch import optim
 from torch.autograd import Variable
@@ -15,9 +14,9 @@ import torch.cuda as cuda
 import torchvision.transforms as standard_transforms
 
 import utils.transforms as extended_transforms
-# import models.fcn8s as model
+import models.fcn8s as model
 # import models.fcn16s as model
-import models.u_net as model
+# import models.u_net as model
 from datasets import voc
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
@@ -35,11 +34,11 @@ args = {
     'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
 # log_dir = '/home/babbasi/level-sets/pytorch-semantic-segmentation/train/voc-fcn'
-log_dir = './train/voc-fcn' # local log directory
+log_dir = './logs/voc-fcn' # local log directory
 def main(train_args):
-    # net = model.FCN8s(num_classes=voc.num_classes,pretrained=False)
+    net = model.FCN8s(num_classes=voc.num_classes,pretrained=False)
     # net = model.FCN16VGG(num_classes=voc.num_classes,pretrained=False)
-    net = model.UNet(num_classes=voc.num_classes)
+    # net = model.UNet(num_classes=voc.num_classes)
 
 
     if th.cuda.is_available():
@@ -76,8 +75,8 @@ def main(train_args):
         criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label)
     optimizer = optim.SGD(net.parameters(),lr=0.01)
 
-    # os.makedirs(log_dir + '/store_data.csv',exist_ok=True)
-    training_log = open('store_data.csv', 'w')
+    os.makedirs(log_dir,exist_ok=True)
+    training_log = open(log_dir+'/store_data.txt', 'w+') # Will write file if it doesn't exist
     # scheduler = ReduceLROnPlateau(optimizer, 'min', patience=train_args['lr_patience'], min_lr=1e-10, verbose=True)
 
     for epoch in range(curr_epoch, train_args['epoch_num'] + 1):

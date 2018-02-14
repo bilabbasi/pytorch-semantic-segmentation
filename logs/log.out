@@ -1,0 +1,4 @@
+cuda is available
+/home/babbasi/anaconda3/lib/python3.6/site-packages/torchvision-0.2.0-py3.6.egg/torchvision/transforms/transforms.py:156: UserWarning: The use of the transforms.Scale transform is deprecated, please use transforms.Resize instead.
+/home/babbasi/level-set-rnn/utils/misc.py:47: UserWarning: Implicit dimension choice for log_softmax has been deprecated. Change the call to include dim=X as an argument.
+  return self.nll_loss(F.log_softmax(inputs), targets)
