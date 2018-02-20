@@ -1,4 +1,6 @@
 import os
+import sys
+sys.path.append('..')
 
 import torchvision.transforms as standard_transforms
 from torch.autograd import Variable
@@ -6,21 +8,21 @@ from torch.backends import cudnn
 from torch.utils.data import DataLoader
 
 from datasets import voc
-from models import *
+#from models import *
+from models import fcn8s
 from utils import check_mkdir
 
 cudnn.benchmark = True
 
-ckpt_path = './ckpt'
+ckpt_path = '../logs/ckpt/voc-fcn8s'
 
 args = {
     'exp_name': 'voc-psp_net',
     'snapshot': 'epoch_33_loss_0.31766_acc_0.92188_acc-cls_0.81110_mean-iu_0.70271_fwavacc_0.86757_lr_0.0023769346.pth'
 }
 
-
 def main():
-    net = PSPNet(num_classes=voc.num_classes).cuda()
+    net = fcn8s.FCN8s(num_classes=voc.num_classes,pretrained=False).cuda()
     print('load model ' + args['snapshot'])
     net.load_state_dict(torch.load(os.path.join(ckpt_path, args['exp_name'], args['snapshot'])))
     net.eval()
@@ -46,8 +48,8 @@ def main():
 
         prediction = output.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
         prediction = voc.colorize_mask(prediction)
-        prediction.save(os.path.join(ckpt_path, args['exp_name'], 'test', img_name + '.png'))
-
+        # prediction.save(os.path.join(ckpt_path, args['exp_name], 'test', img_name + '.png'))
+        prediction.save(os.path.join(ckpt_path,'segmented-images','test','img_name'+'.png'))
         print('%d / %d' % (vi + 1, len(test_loader)))
 
 
