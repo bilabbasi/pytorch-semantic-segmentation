@@ -1,6 +1,7 @@
 import sys
 # sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/net-lsm/pytorch-semantic-segmentation/') # cpu root
-sys.path.insert(0, '/home/babbasi/level-set-rnn') # compute canada root
+root = '/home/bilalabbasi/projects/pytorch-semantic-segmentation/'
+sys.path.insert(0, root) # compute canada root
 
 
 import datetime
@@ -20,7 +21,7 @@ import torch.cuda as cuda
 import utils.transforms as extended_transforms
 from datasets import voc
 # from models import *
-from models import fcn8s, fcn16s, fcn32s
+from models import fcn8s, fcn16s, fcn32s, deeplab_resnet
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 cudnn.benchmark = True
@@ -31,7 +32,7 @@ exp_name = 'voc-fcn8s'
 
 args = {
     'epoch_num': 300,
-    'lr': 1e-10,
+    'lr': 1e-4,
     'weight_decay': 1e-4,
     'momentum': 0.95,
     'lr_patience': 100,  # large patience denotes fixed lr
@@ -44,10 +45,9 @@ args = {
 
 def main(train_args):
     if cuda.is_available():
-        #net = fcn16s.FCN16VGG(num_classes=voc.num_classes,pretrained=False).cuda()
-        #net = fcn32s.FCN32VGG(num_classes=voc.num_classes,pretrained=True).cuda()
-        net = fcn8s.FCN8s(num_classes=voc.num_classes, pretrained=True).cuda() 
-        print('cuda is available')
+        #net = fcn8s.FCN8s(num_classes=voc.num_classes, pretrained=False).cuda() 
+        rdl = deeplab_resnet.Res_Deeplab()
+        net = rdl.cuda()
     else:
         print('cuda is not available')
         net = fcn8s.FCN8s(num_classes=voc.num_classes,pretrained=True)
@@ -105,14 +105,14 @@ def main(train_args):
     #check_mkdir(ckpt_path)
     #check_mkdir(os.path.join(ckpt_path, exp_name))
     #open(os.path.join(ckpt_path, exp_name, str(datetime.datetime.now()) + '.txt'), 'w').write(str(train_args) + '\n\n')
-    log_dir = './logs/voc-fcn'
+    log_dir = os.path.join(root,'logs','voc-fcn')
     #time = datetime.datetime.now().strftime("%d-%m-%y-%H-%M")
     time = '_feb8'
     train_file = 'train_log' + time + '.txt'
     val_file = 'val_log' + time + '.txt'
     #os.makedirs(log_dir,exist_ok=True) 
     
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=train_args['lr_patience'], min_lr=1e-10, verbose=True)
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=train_args['lr_patience'], min_lr=1e-4, verbose=True)
     training_log = open(os.path.join(log_dir,train_file),'w') 
     val_log = open(os.path.join(log_dir,val_file),'w')
 
@@ -149,12 +149,13 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args,training_lo
         train_loss.update(loss.data[0], N)
 
         curr_iter += 1
-        #writer.add_scalar('train_loss', train_loss.avg, curr_iter)
-        print(curr_iter,loss.data[0],train_loss.avg,file=training_log,flush=True)
-        if (i + 1) % train_args['print_freq'] == 0:
-            print('[epoch %d], [iter %d / %d], [train loss %.5f]' % (
-                epoch, i + 1, len(train_loader), train_loss.avg
-                ),file = training_log,flush=True)
+        #print(curr_iter,loss.data[0],train_loss.avg,file=training_log,flush=True)
+        training_log.write(str(curr_iter) + ' ' + str(train_loss.avg) +'\n')
+        print(str(train_loss.avg))
+        #if (i + 1) % train_args['print_freq'] == 0:
+        #    print('[epoch %d], [iter %d / %d], [train loss %.5f]' % (
+        #        epoch, i + 1, len(train_loader), train_loss.avg
+        #        ),file = training_log,flush=True)
 
 
 def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, visualize,val_log):
@@ -178,18 +179,19 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
        
         loss = criterion(outputs,gts)/N
         val_loss.update(loss.data[0], N)
-        print(epoch, loss.data[0], val_loss.avg, file=val_log, flush=True)
-        # if random.random() > train_args['val_img_sample_rate']:
-        #     inputs_all.append(None)
-        # else:
-        #     inputs_all.append(inputs.data.squeeze_(0).cpu())
+        #print(epoch, loss.data[0], val_loss.avg, file=val_log, flush=True)
+        val_log.write(epoch + ' ' + str(val_loss.avg) + '\n')
+        if random.random() > train_args['val_img_sample_rate']:
+            inputs_all.append(None)
+        else:
+            inputs_all.append(inputs.data.squeeze_(0).cpu())
         
-        # gts_all.append(gts.data.squeeze_(0).cpu().numpy())
+        gts_all.append(gts.data.squeeze_(0).cpu().numpy())
        
-        # predictions = outputs.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
-        # predictions_all.append(predictions)
+        predictions = outputs.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
+        predictions_all.append(predictions)
         
-    # acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
+    acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
 
     #if mean_iu > train_args['best_record']['mean_iu']:
     #    train_args['best_record']['val_loss'] = val_loss.avg

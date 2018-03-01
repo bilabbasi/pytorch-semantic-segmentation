@@ -8,7 +8,7 @@ from torch.utils import data
 
 num_classes = 21
 ignore_label = 255
-root = '/home/babbasi/scratch/VOC/' # Compute canada server pwd
+root = '/home/bilalabbasi/scratch/VOC/' # Compute canada server pwd
 #root = '/Users/bilalabbasi/Dropbox/Projects/semantic-segmentation/VOC/'
 '''
 color map
@@ -52,9 +52,9 @@ def make_dataset(mode):
             item = (os.path.join(img_path, it + '.jpg'), os.path.join(mask_path, it + '.png'))
             items.append(item)
     else:
-        img_path = os.path.join(root, 'VOCdevkit (test)', 'VOC2012', 'JPEGImages')
+        img_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'JPEGImages')
         data_list = [l.strip('\n') for l in open(os.path.join(
-            root, 'VOCdevkit (test)', 'VOC2012', 'ImageSets', 'Segmentation', 'test.txt')).readlines()]
+            root, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Segmentation', 'test.txt')).readlines()]
         for it in data_list:
             items.append((img_path, it))
     return items
