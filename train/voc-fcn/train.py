@@ -8,6 +8,7 @@ import datetime
 import os
 import random
 
+import torch
 import torchvision.transforms as standard_transforms
 import torchvision.utils as vutils
 #from tensorboard import SummaryWriter
@@ -45,9 +46,8 @@ args = {
 
 def main(train_args):
     if cuda.is_available():
-        #net = fcn8s.FCN8s(num_classes=voc.num_classes, pretrained=False).cuda() 
-        rdl = deeplab_resnet.Res_Deeplab()
-        net = rdl.cuda()
+        net = fcn8s.FCN8s(num_classes=voc.num_classes, pretrained=False).cuda() 
+        #net = deeplab_resnet.Res_Deeplab().cuda()
     else:
         print('cuda is not available')
         net = fcn8s.FCN8s(num_classes=voc.num_classes,pretrained=True)
@@ -84,7 +84,7 @@ def main(train_args):
     ])
 
     train_set = voc.VOC('train', transform=input_transform, target_transform=target_transform)
-    train_loader = DataLoader(train_set, batch_size=1, num_workers=4, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=1, num_workers=8, shuffle=True)
     val_set = voc.VOC('val', transform=input_transform, target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False)
 
@@ -151,7 +151,8 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args,training_lo
         curr_iter += 1
         #print(curr_iter,loss.data[0],train_loss.avg,file=training_log,flush=True)
         training_log.write(str(curr_iter) + ' ' + str(train_loss.avg) +'\n')
-        print(str(train_loss.avg))
+        if curr_iter%100==0:
+            print('epoch={}, it={} '.format(epoch,curr_iter),str(train_loss.avg))
         #if (i + 1) % train_args['print_freq'] == 0:
         #    print('[epoch %d], [iter %d / %d], [train loss %.5f]' % (
         #        epoch, i + 1, len(train_loader), train_loss.avg
@@ -180,7 +181,7 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         loss = criterion(outputs,gts)/N
         val_loss.update(loss.data[0], N)
         #print(epoch, loss.data[0], val_loss.avg, file=val_log, flush=True)
-        val_log.write(epoch + ' ' + str(val_loss.avg) + '\n')
+        val_log.write(str(epoch) + ' ' + str(val_loss.avg) + '\n')
         if random.random() > train_args['val_img_sample_rate']:
             inputs_all.append(None)
         else:
@@ -192,19 +193,21 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         predictions_all.append(predictions)
         
     acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
+    print('Mean IoU for epoch {} is {}'.format(epoch,mean_iu))
+    if mean_iu > train_args['best_record']['mean_iu']:
+        train_args['best_record']['val_loss'] = val_loss.avg
+        train_args['best_record']['epoch'] = epoch
+        train_args['best_record']['acc'] = acc
+        train_args['best_record']['acc_cls'] = acc_cls
+        train_args['best_record']['mean_iu'] = mean_iu
+        train_args['best_record']['fwavacc'] = fwavacc
+        snapshot_name = 'epoch_%d_loss_%.5f_acc_%.5f_acc-cls_%.5f_mean-iu_%.5f_fwavacc_%.5f_lr_%.10f' % (
+            epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc, optimizer.param_groups[1]['lr']
+        )
 
-    #if mean_iu > train_args['best_record']['mean_iu']:
-    #    train_args['best_record']['val_loss'] = val_loss.avg
-    #    train_args['best_record']['epoch'] = epoch
-    #    train_args['best_record']['acc'] = acc
-    #    train_args['best_record']['acc_cls'] = acc_cls
-    #    train_args['best_record']['mean_iu'] = mean_iu
-    #    train_args['best_record']['fwavacc'] = fwavacc
-    #    snapshot_name = 'epoch_%d_loss_%.5f_acc_%.5f_acc-cls_%.5f_mean-iu_%.5f_fwavacc_%.5f_lr_%.10f' % (
-    #        epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc, optimizer.param_groups[1]['lr']
-    #    )
-    #    torch.save(net.state_dict(), os.path.join(ckpt_path, exp_name, snapshot_name + '.pth'))
-    #    torch.save(optimizer.state_dict(), os.path.join(ckpt_path, exp_name, 'opt_' + snapshot_name + '.pth'))
+        root = '/home/bilalabbasi/projects/pytorch-semantic-segmentation/logs/voc-fcn'
+        torch.save(net.state_dict(), os.path.join(root,'test' + '.pth'))
+        #torch.save(optimizer.state_dict(), os.path.join(ckpt_path, exp_name, 'opt_' + snapshot_name + '.pth'))
     #
     #    if train_args['val_save_to_img_file']:
     #        to_save_dir = os.path.join(ckpt_path, exp_name, str(epoch))

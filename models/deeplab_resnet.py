@@ -182,28 +182,32 @@ class ResNet(nn.Module):
         return x
 
 class MS_Deeplab(nn.Module):
+    # Computes FCN resnet with different scales for dilated convolution. Takes the max in the end.
     def __init__(self,block,NoLabels):
 	super(MS_Deeplab,self).__init__()
-	self.Scale = ResNet(block,[3, 4, 23, 3],NoLabels)   #changed to fix #4 
+	self.Scale = ResNet(block,[3, 4, 23, 3],NoLabels)   #change to fit #4  
 
     def forward(self,x):
         input_size = x.size()[2]
-	self.interp1 = nn.UpsamplingBilinear2d(size = (  int(input_size*0.75)+1,  int(input_size*0.75)+1  ))
-        self.interp2 = nn.UpsamplingBilinear2d(size = (  int(input_size*0.5)+1,   int(input_size*0.5)+1   ))
-        self.interp3 = nn.UpsamplingBilinear2d(size = (  outS(input_size),   outS(input_size)   ))
+	self.interp75 = nn.UpsamplingBilinear2d(size = (  int(input_size*0.75)+1,  int(input_size*0.75)+1  ))
+        self.interp50 = nn.UpsamplingBilinear2d(size = (  int(input_size*0.5)+1,   int(input_size*0.5)+1   ))
+        #self.interpS = nn.UpsamplingBilinear2d(size = (  outS(input_size),   outS(input_size)   ))
+        self.interpS = nn.UpsamplingBilinear2d(size = (input_size,input_size))
         out = []
-        x2 = self.interp1(x)
-        x3 = self.interp2(x)
-	out.append(self.Scale(x))	# for original scale
-	out.append(self.interp3(self.Scale(x2)))	# for 0.75x scale
-	out.append(self.Scale(x3))	# for 0.5x scale
-
+        x75 = self.interp75(x)
+        x50 = self.interp50(x)
+	#out.append(self.Scale(x))	# for original scale
+	out.append(self.interpS(self.Scale(x)))
+        out.append(self.interpS(self.Scale(x75)))	# for 0.75x scale
+	#out.append(self.Scale(x3))	# for 0.5x scale
+        out.append(self.interpS(self.Scale(x50)))
 
         x2Out_interp = out[1]
-        x3Out_interp = self.interp3(out[2])
-        temp1 = torch.max(out[0],x2Out_interp)
-        out.append(torch.max(temp1,x3Out_interp))
-	return out
+        #x3Out_interp = self.interp3(out[2])
+        x3Out_interp = out[2]
+        temp1 = torch.max(out[0],out[1])
+        out.append(torch.max(temp1,out[2]))
+	return out[-1]
 
 def Res_Deeplab(NoLabels=21):
     model = MS_Deeplab(Bottleneck,NoLabels)

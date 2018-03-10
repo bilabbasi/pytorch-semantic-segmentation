@@ -53,10 +53,11 @@ def make_dataset(mode):
             items.append(item)
     else:
         img_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'JPEGImages')
+        mask_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'SegmentationClass')
         data_list = [l.strip('\n') for l in open(os.path.join(
             root, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Segmentation', 'test.txt')).readlines()]
         for it in data_list:
-            items.append((img_path, it))
+            items.append((img_path, it,mask_path))
     return items
 
 
@@ -73,11 +74,14 @@ class VOC(data.Dataset):
 
     def __getitem__(self, index):
         if self.mode == 'test':
-            img_path, img_name = self.imgs[index]
+            img_path, img_name,mask_path = self.imgs[index]
             img = Image.open(os.path.join(img_path, img_name + '.jpg')).convert('RGB')
+            msk = Image.open(os.path.join(mask_path, img_name + '.png'))
             if self.transform is not None:
                 img = self.transform(img)
-            return img_name, img
+            if self.target_transform is not None:
+                msk = self.target_transform(msk)
+            return img_name, img, msk
 
         img_path, mask_path = self.imgs[index]
         img = Image.open(img_path).convert('RGB')
