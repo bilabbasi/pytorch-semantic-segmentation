@@ -3,7 +3,7 @@ import math
 import torch.utils.model_zoo as model_zoo
 import torch
 import numpy as np
-affine_par = True
+affine_par = False
 # Cloned from https://github.com/isht7/pytorch-deeplab-resnet
 
 def outS(i):
@@ -57,8 +57,8 @@ class Bottleneck(nn.Module):
         super(Bottleneck, self).__init__()
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, stride=stride, bias=False) # change
         self.bn1 = nn.BatchNorm2d(planes,affine = affine_par)
-	for i in self.bn1.parameters():
-            i.requires_grad = False
+	#for i in self.bn1.parameters():
+        #    i.requires_grad = False
         padding = 1
         if dilation_ == 2:
 	    padding = 2
@@ -67,8 +67,8 @@ class Bottleneck(nn.Module):
         self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=1, # change
                                padding=padding, bias=False, dilation = dilation_)
         self.bn2 = nn.BatchNorm2d(planes,affine = affine_par)
-        for i in self.bn2.parameters():
-            i.requires_grad = False
+        #for i in self.bn2.parameters():
+        #    i.requires_grad = False
         self.conv3 = nn.Conv2d(planes, planes * 4, kernel_size=1, bias=False)
         self.bn3 = nn.BatchNorm2d(planes * 4, affine = affine_par)
         for i in self.bn3.parameters():
@@ -128,8 +128,8 @@ class ResNet(nn.Module):
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3,
                                bias=False)
         self.bn1 = nn.BatchNorm2d(64,affine = affine_par)
-        for i in self.bn1.parameters():
-            i.requires_grad = False
+        #for i in self.bn1.parameters():
+        #    i.requires_grad = False
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1, ceil_mode=True) # change
         self.layer1 = self._make_layer(block, 64, layers[0])
@@ -142,11 +142,9 @@ class ResNet(nn.Module):
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
                 m.weight.data.normal_(0, 0.01)
-            elif isinstance(m, nn.BatchNorm2d):
-                m.weight.data.fill_(1)
-                m.bias.data.zero_()
-        #        for i in m.parameters():
-        #            i.requires_grad = False
+        #    elif isinstance(m, nn.BatchNorm2d):
+        #        m.weight.data.fill_(1)
+        #        m.bias.data.zero_()
 
     def _make_layer(self, block, planes, blocks, stride=1,dilation__ = 1):
         downsample = None
@@ -156,8 +154,8 @@ class ResNet(nn.Module):
                           kernel_size=1, stride=stride, bias=False),
                 nn.BatchNorm2d(planes * block.expansion,affine = affine_par),
             )
-        for i in downsample._modules['1'].parameters():
-            i.requires_grad = False
+        #for i in downsample._modules['1'].parameters():
+        #    i.requires_grad = False
         layers = []
         layers.append(block(self.inplanes, planes, stride,dilation_=dilation__, downsample = downsample ))
         self.inplanes = planes * block.expansion
@@ -189,10 +187,11 @@ class MS_Deeplab(nn.Module):
 
     def forward(self,x):
         input_size = x.size()[2]
+        H,W = x.size()[2:]
 	self.interp75 = nn.UpsamplingBilinear2d(size = (  int(input_size*0.75)+1,  int(input_size*0.75)+1  ))
         self.interp50 = nn.UpsamplingBilinear2d(size = (  int(input_size*0.5)+1,   int(input_size*0.5)+1   ))
         #self.interpS = nn.UpsamplingBilinear2d(size = (  outS(input_size),   outS(input_size)   ))
-        self.interpS = nn.UpsamplingBilinear2d(size = (input_size,input_size))
+        self.interpS = nn.UpsamplingBilinear2d(size = (H,W))
         out = []
         x75 = self.interp75(x)
         x50 = self.interp50(x)
