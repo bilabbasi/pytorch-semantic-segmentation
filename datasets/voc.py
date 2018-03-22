@@ -32,17 +32,27 @@ def colorize_mask(mask):
     return new_mask
 
 
-def make_dataset(mode):
+def make_dataset(mode,set):
     assert mode in ['train', 'val', 'test']
+    assert set in ['benchmark','voc']
     items = []
     if mode == 'train':
-        img_path = os.path.join(root, 'benchmark_RELEASE', 'dataset', 'img')
-        mask_path = os.path.join(root, 'benchmark_RELEASE', 'dataset', 'cls')
-        data_list = [l.strip('\n') for l in open(os.path.join(
-            root, 'benchmark_RELEASE', 'dataset', 'train.txt')).readlines()]
-        for it in data_list:
-            item = (os.path.join(img_path, it + '.jpg'), os.path.join(mask_path, it + '.mat'))
-            items.append(item)
+        if set == 'benchmark':
+            img_path = os.path.join(root, 'benchmark_RELEASE', 'dataset', 'img')
+            mask_path = os.path.join(root, 'benchmark_RELEASE', 'dataset', 'cls')
+            data_list = [l.strip('\n') for l in open(os.path.join(
+                root, 'benchmark_RELEASE', 'dataset', 'train.txt')).readlines()]
+            for it in data_list:
+                item = (os.path.join(img_path, it + '.jpg'), os.path.join(mask_path, it + '.mat'))
+                items.append(item)
+        else:
+            img_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'JPEGImages')
+            mask_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'SegmentationClass')
+            data_list = [l.strip('\n') for l in open(os.path.join(
+                root, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Segmentation', 'train.txt')).readlines()]
+            for it in data_list:
+                item = (os.path.join(img_path, it + '.jpg'), os.path.join(mask_path, it + '.png'))
+                items.append(item)
     elif mode == 'val':
         img_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'JPEGImages')
         mask_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'SegmentationClass')
@@ -57,26 +67,27 @@ def make_dataset(mode):
         data_list = [l.strip('\n') for l in open(os.path.join(
             root, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Segmentation', 'test.txt')).readlines()]
         for it in data_list:
-            items.append((img_path, it,mask_path))
+            item = (os.path.join(img_path, it + '.jpg'), it, os.path.join(mask_path, it + '.png'))
+            items.append(item)
     return items
 
 
 class VOC(data.Dataset):
-    def __init__(self, mode, joint_transform=None, sliding_crop=None, transform=None, target_transform=None):
-        self.imgs = make_dataset(mode)
+    def __init__(self, mode,set='benchmark', joint_transform=None, transform=None, target_transform=None):
+        self.imgs = make_dataset(mode,set)
         if len(self.imgs) == 0:
             raise RuntimeError('Found 0 images, please check the data set')
         self.mode = mode
+        self.set = set
         self.joint_transform = joint_transform
-        self.sliding_crop = sliding_crop
         self.transform = transform
         self.target_transform = target_transform
 
     def __getitem__(self, index):
-        if self.mode == 'test':
+        if self.mode == 'eval':
             img_path, img_name,mask_path = self.imgs[index]
-            img = Image.open(os.path.join(img_path, img_name + '.jpg')).convert('RGB')
-            msk = Image.open(os.path.join(mask_path, img_name + '.png'))
+            img = Image.open(img_path).convert('RGB')
+            msk = Image.open(mask_path)
             if self.transform is not None:
                 img = self.transform(img)
             if self.target_transform is not None:
@@ -85,7 +96,9 @@ class VOC(data.Dataset):
 
         img_path, mask_path = self.imgs[index]
         img = Image.open(img_path).convert('RGB')
-        if self.mode == 'train':
+
+        if self.set == 'benchmark':
+            assert self.mode == 'train', 'benchmark dataset can only be used for training' 
             mask = sio.loadmat(mask_path)['GTcls']['Segmentation'][0][0]
             mask = Image.fromarray(mask.astype(np.uint8))
         else:
@@ -94,20 +107,11 @@ class VOC(data.Dataset):
         if self.joint_transform is not None:
             img, mask = self.joint_transform(img, mask)
 
-        if self.sliding_crop is not None:
-            img_slices, mask_slices, slices_info = self.sliding_crop(img, mask)
-            if self.transform is not None:
-                img_slices = [self.transform(e) for e in img_slices]
-            if self.target_transform is not None:
-                mask_slices = [self.target_transform(e) for e in mask_slices]
-            img, mask = torch.stack(img_slices, 0), torch.stack(mask_slices, 0)
-            return img, mask, torch.LongTensor(slices_info)
-        else:
-            if self.transform is not None:
+        if self.transform is not None:
                 img = self.transform(img)
-            if self.target_transform is not None:
+        if self.target_transform is not None:
                 mask = self.target_transform(mask)
-            return img, mask
+        return img, mask
 
     def __len__(self):
         return len(self.imgs)
