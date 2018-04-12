@@ -39,7 +39,7 @@ args = {
 model = 'fcn8s'
 iter_freq = 50
 epoch_freq = 20 # Frequency to save parameter states
-bsz = 1
+bsz = 10
 def main(train_args):
     if cuda.is_available():
         net = fcn8s.FCN8s(num_classes=voc.num_classes, pretrained=False).cuda() 
@@ -69,15 +69,7 @@ def main(train_args):
     ])
     
     train_set = voc.VOC('train',set='benchmark', transform=input_transform, target_transform=target_transform)
-    if bsz == 1:
-        train_loader = DataLoader(train_set, batch_size=10, num_workers=8, shuffle=True)
-    else:
-        def my_collate(batch):
-            img = [item[0] for item in batch]
-            msk = [item[1] for item in batch]
-            #msk = torch.LongTensor(msk)
-            return [img,msk]
-        train_loader = DataLoader(train_set, batch_size=1, num_workers=8,collate_fn=my_collate, shuffle=True)
+    train_loader = DataLoader(train_set, batch_size=bsz, num_workers=8, shuffle=True)
     
     val_set = voc.VOC('val',set='voc', transform=input_transform, target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False)
@@ -129,9 +121,6 @@ def train(train_loader, net, criterion, optimizer, epoch, train_args,training_lo
         bsz = len(inputs)
         #pdb.set_trace()
         if cuda.is_available():
-           # for k in range(bsz):
-           #     inputs[k] = Variable(inputs[k]).cuda()
-           #     labels[k] = Variable(labels[k]).cuda()
            inputs = Variable(inputs).cuda()
            labels = Variable(labels).cuda()
         else:
@@ -176,7 +165,7 @@ def validate(val_loader, net, criterion, optimizer,  epoch, train_args, restore,
         loss = criterion(outputs,gts)/N
         val_loss.update(loss.data[0], N)
         
-        val_log.write(str(epoch) + ' ' + str(val_loss.avg) + '\n')
+        #val_log.write(str(epoch) + ' ' + str(val_loss.avg) + '\n')
 
         inputs_all.append(inputs.data.squeeze_(0).cpu())
         gts_all.append(gts.data.squeeze_(0).cpu().numpy())
@@ -186,6 +175,7 @@ def validate(val_loader, net, criterion, optimizer,  epoch, train_args, restore,
         
     acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
     print('Mean IoU for epoch {} is {}'.format(epoch,mean_iu))
+    val_log.write('epoch {}, average val loss = {}'.format(epoch,val_loss.avg))
     val_log.write('Mean IoU for epoch {} is {}'.format(epoch,mean_iu) + '\n')
     root = '/home/bilalabbasi/projects/pytorch-semantic-segmentation/logs/pths'
     if epoch%20 == 0:
