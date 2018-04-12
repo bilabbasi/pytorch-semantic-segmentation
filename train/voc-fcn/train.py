@@ -1,17 +1,11 @@
-import sys
-# sys.path.insert(0, '/Users/bilalabbasi/Dropbox/Projects/net-lsm/pytorch-semantic-segmentation/') # cpu root
+import datetime, os, random, sys
+import pdb
 root = '/home/bilalabbasi/projects/pytorch-semantic-segmentation/'
 sys.path.insert(0, root) # compute canada root
-
-
-import datetime
-import os
-import random
 
 import torch
 import torchvision.transforms as standard_transforms
 import torchvision.utils as vutils
-#from tensorboard import SummaryWriter
 from torch import optim
 from torch.autograd import Variable
 from torch.backends import cudnn
@@ -22,14 +16,13 @@ import torch.cuda as cuda
 import utils.transforms as extended_transforms
 from datasets import voc
 # from models import *
-from models import fcn8s, fcn16s, fcn32s, deeplab_resnet
+from models import fcn8s, fcn16s, fcn32s, deeplab_resnet, MBO
 from utils import check_mkdir, evaluate, AverageMeter, CrossEntropyLoss2d
 
 cudnn.benchmark = True
 
-ckpt_path = './logs/ckpt'
+ckpt_path = os.path.join(root,'logs','ckpt')
 exp_name = 'voc-fcn8s'
-#writer = SummaryWriter(os.path.join(ckpt_path, 'exp', exp_name))
 
 args = {
     'epoch_num': 300,
@@ -43,26 +36,18 @@ args = {
     'val_img_sample_rate': 0.1  # randomly sample some validation results to display
 }
 
-
+model = 'fcn8s'
+iter_freq = 50
+epoch_freq = 20 # Frequency to save parameter states
+bsz = 1
 def main(train_args):
     if cuda.is_available():
         net = fcn8s.FCN8s(num_classes=voc.num_classes, pretrained=False).cuda() 
+        #net = MBO.MBO().cuda()
         #net = deeplab_resnet.Res_Deeplab().cuda()
     else:
         print('cuda is not available')
         net = fcn8s.FCN8s(num_classes=voc.num_classes,pretrained=True)
-    
-    if len(train_args['snapshot']) == 0:
-        curr_epoch = 1
-        train_args['best_record'] = {'epoch': 0, 'val_loss': 1e10, 'acc': 0, 'acc_cls': 0, 'mean_iu': 0, 'fwavacc': 0}
-    else:
-        print('training resumes from ' + train_args['snapshot'])
-        net.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, train_args['snapshot'])))
-        split_snapshot = train_args['snapshot'].split('_')
-        curr_epoch = int(split_snapshot[1]) + 1
-        train_args['best_record'] = {'epoch': int(split_snapshot[1]), 'val_loss': float(split_snapshot[3]),
-                                     'acc': float(split_snapshot[5]), 'acc_cls': float(split_snapshot[7]),
-                                     'mean_iu': float(split_snapshot[9]), 'fwavacc': float(split_snapshot[11])}
 
     net.train()
 
@@ -82,84 +67,94 @@ def main(train_args):
         standard_transforms.CenterCrop(400),
         standard_transforms.ToTensor()
     ])
-
-    train_set = voc.VOC('train', transform=input_transform, target_transform=target_transform)
-    train_loader = DataLoader(train_set, batch_size=1, num_workers=8, shuffle=True)
-    val_set = voc.VOC('val', transform=input_transform, target_transform=target_transform)
+    
+    train_set = voc.VOC('train',set='benchmark', transform=input_transform, target_transform=target_transform)
+    if bsz == 1:
+        train_loader = DataLoader(train_set, batch_size=10, num_workers=8, shuffle=True)
+    else:
+        def my_collate(batch):
+            img = [item[0] for item in batch]
+            msk = [item[1] for item in batch]
+            #msk = torch.LongTensor(msk)
+            return [img,msk]
+        train_loader = DataLoader(train_set, batch_size=1, num_workers=8,collate_fn=my_collate, shuffle=True)
+    
+    val_set = voc.VOC('val',set='voc', transform=input_transform, target_transform=target_transform)
     val_loader = DataLoader(val_set, batch_size=1, num_workers=4, shuffle=False)
 
     criterion = CrossEntropyLoss2d(size_average=False, ignore_index=voc.ignore_label).cuda()
-
     optimizer = optim.Adam([
         {'params': [param for name, param in net.named_parameters() if name[-4:] == 'bias'],
-         'lr': 2 * train_args['lr']},
+         'lr': train_args['lr']},
         {'params': [param for name, param in net.named_parameters() if name[-4:] != 'bias'],
-         'lr': train_args['lr'], 'weight_decay': train_args['weight_decay']}
-    ], betas=(train_args['momentum'], 0.999))
+         'lr': train_args['lr']}],
+        betas=(train_args['momentum'], 0.999))
+    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=2, min_lr=1e-10, verbose=True)
 
-    if len(train_args['snapshot']) > 0:
-        optimizer.load_state_dict(torch.load(os.path.join(ckpt_path, exp_name, 'opt_' + train_args['snapshot'])))
-        optimizer.param_groups[0]['lr'] = 2 * train_args['lr']
-        optimizer.param_groups[1]['lr'] = train_args['lr']
+    lr0 = 1e-7
+    max_epoch = 50
+    max_iter = max_epoch * len(train_loader)
+    #optimizer = optim.SGD(net.parameters(),lr = lr0, momentum = 0.9, weight_decay = 0.0005)
+    scheduler = optim.lr_scheduler.StepLR(optimizer,step_size=2,gamma=0.5)
 
-    #check_mkdir(ckpt_path)
-    #check_mkdir(os.path.join(ckpt_path, exp_name))
-    #open(os.path.join(ckpt_path, exp_name, str(datetime.datetime.now()) + '.txt'), 'w').write(str(train_args) + '\n\n')
     log_dir = os.path.join(root,'logs','voc-fcn')
-    #time = datetime.datetime.now().strftime("%d-%m-%y-%H-%M")
-    time = '_feb8'
+    time = datetime.datetime.now().strftime('%d-%m-%H-%M')
     train_file = 'train_log' + time + '.txt'
     val_file = 'val_log' + time + '.txt'
     #os.makedirs(log_dir,exist_ok=True) 
-    
-    scheduler = ReduceLROnPlateau(optimizer, 'min', patience=train_args['lr_patience'], min_lr=1e-4, verbose=True)
+     
     training_log = open(os.path.join(log_dir,train_file),'w') 
     val_log = open(os.path.join(log_dir,val_file),'w')
 
+    curr_epoch = 1
     for epoch in range(curr_epoch, train_args['epoch_num'] + 1):
-        train(train_loader, net, criterion, optimizer, epoch, train_args,training_log)
-        
+        train(train_loader, net, criterion, optimizer, epoch, train_args,training_log, max_iter,lr0) 
         val_loss = validate(val_loader, net, criterion, optimizer, epoch, train_args, restore_transform, visualize,val_log)
-        scheduler.step(val_loss) 
 
-def train(train_loader, net, criterion, optimizer, epoch, train_args,training_log):
+        scheduler.step(val_loss) 
+        
+        lr_tmp = 0.0
+        k = 0
+        for param_group in optimizer.param_groups:
+            lr_tmp += param_group['lr']
+            k+=1
+        val_log.write('learning rate = {}'.format(str(lr_tmp/k)) + '\n')
+        #scheduler.step()
+
+def train(train_loader, net, criterion, optimizer, epoch, train_args,training_log,max_iter,lr0):
     train_loss = AverageMeter()
     curr_iter = (epoch - 1) * len(train_loader)
     for i, data in enumerate(train_loader):
         inputs, labels = data
-        assert inputs.size()[2:] == labels.size()[1:]
-        N = inputs.size(0)
-
+        bsz = len(inputs)
+        #pdb.set_trace()
         if cuda.is_available():
-            inputs = Variable(inputs).cuda()
-            labels = Variable(labels).cuda()
+           # for k in range(bsz):
+           #     inputs[k] = Variable(inputs[k]).cuda()
+           #     labels[k] = Variable(labels[k]).cuda()
+           inputs = Variable(inputs).cuda()
+           labels = Variable(labels).cuda()
         else:
             inputs = Variable(inputs)
             labels = Variable(labels)
 
         optimizer.zero_grad()
         outputs = net(inputs)
-        assert outputs.size()[2:] == labels.size()[1:]
-        assert outputs.size()[1] == voc.num_classes
 
-        loss = criterion(outputs, labels) / N
+        loss = criterion(outputs, labels) / bsz
         loss.backward()
         optimizer.step()
 
-        train_loss.update(loss.data[0], N)
-
         curr_iter += 1
-        #print(curr_iter,loss.data[0],train_loss.avg,file=training_log,flush=True)
+        #poly_lr_step(optimizer,lr0,curr_iter,max_iter,power=0.9)
+        train_loss.update(loss.data[0], bsz)
+        
         training_log.write(str(curr_iter) + ' ' + str(train_loss.avg) +'\n')
-        if curr_iter%100==0:
+        if curr_iter%iter_freq==0:
             print('epoch={}, it={} '.format(epoch,curr_iter),str(train_loss.avg))
-        #if (i + 1) % train_args['print_freq'] == 0:
-        #    print('[epoch %d], [iter %d / %d], [train loss %.5f]' % (
-        #        epoch, i + 1, len(train_loader), train_loss.avg
-        #        ),file = training_log,flush=True)
 
 
-def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, visualize,val_log):
+def validate(val_loader, net, criterion, optimizer,  epoch, train_args, restore, visualize,val_log):
     net.eval()
 
     val_loss = AverageMeter()
@@ -180,13 +175,10 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
        
         loss = criterion(outputs,gts)/N
         val_loss.update(loss.data[0], N)
-        #print(epoch, loss.data[0], val_loss.avg, file=val_log, flush=True)
-        val_log.write(str(epoch) + ' ' + str(val_loss.avg) + '\n')
-        if random.random() > train_args['val_img_sample_rate']:
-            inputs_all.append(None)
-        else:
-            inputs_all.append(inputs.data.squeeze_(0).cpu())
         
+        val_log.write(str(epoch) + ' ' + str(val_loss.avg) + '\n')
+
+        inputs_all.append(inputs.data.squeeze_(0).cpu())
         gts_all.append(gts.data.squeeze_(0).cpu().numpy())
        
         predictions = outputs.data.max(1)[1].squeeze_(1).squeeze_(0).cpu().numpy()
@@ -194,62 +186,17 @@ def validate(val_loader, net, criterion, optimizer, epoch, train_args, restore, 
         
     acc, acc_cls, mean_iu, fwavacc = evaluate(predictions_all, gts_all, voc.num_classes)
     print('Mean IoU for epoch {} is {}'.format(epoch,mean_iu))
-    if mean_iu > train_args['best_record']['mean_iu']:
-        train_args['best_record']['val_loss'] = val_loss.avg
-        train_args['best_record']['epoch'] = epoch
-        train_args['best_record']['acc'] = acc
-        train_args['best_record']['acc_cls'] = acc_cls
-        train_args['best_record']['mean_iu'] = mean_iu
-        train_args['best_record']['fwavacc'] = fwavacc
-        snapshot_name = 'epoch_%d_loss_%.5f_acc_%.5f_acc-cls_%.5f_mean-iu_%.5f_fwavacc_%.5f_lr_%.10f' % (
-            epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc, optimizer.param_groups[1]['lr']
-        )
-
-        root = '/home/bilalabbasi/projects/pytorch-semantic-segmentation/logs/voc-fcn'
-        torch.save(net.state_dict(), os.path.join(root,'test' + '.pth'))
-        #torch.save(optimizer.state_dict(), os.path.join(ckpt_path, exp_name, 'opt_' + snapshot_name + '.pth'))
-    #
-    #    if train_args['val_save_to_img_file']:
-    #        to_save_dir = os.path.join(ckpt_path, exp_name, str(epoch))
-    #        check_mkdir(to_save_dir)
-    #
-    #    val_visual = []
-    #    for idx, data in enumerate(zip(inputs_all, gts_all, predictions_all)):
-    #        if data[0] is None:
-    #            continue
-    #       input_pil = restore(data[0])
-    #        gt_pil = voc.colorize_mask(data[1])
-    #        predictions_pil = voc.colorize_mask(data[2])
-    #        if train_args['val_save_to_img_file']:
-    #            input_pil.save(os.path.join(to_save_dir, '%d_input.png' % idx))
-    #            predictions_pil.save(os.path.join(to_save_dir, '%d_prediction.png' % idx))
-    #            gt_pil.save(os.path.join(to_save_dir, '%d_gt.png' % idx))
-    #        val_visual.extend([visualize(input_pil.convert('RGB')), visualize(gt_pil.convert('RGB')),
-    #                           visualize(predictions_pil.convert('RGB'))])
-    #    val_visual = torch.stack(val_visual, 0)
-    #    val_visual = vutils.make_grid(val_visual, nrow=3, padding=5)
-    #    writer.add_image(snapshot_name, val_visual)
-    #
-    # print('--------------------------------------------------------------------')
-    # print('[epoch %d], [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f]' % (
-    #    epoch, val_loss.avg, acc, acc_cls, mean_iu, fwavacc))
-    #
-    # print('best record: [val loss %.5f], [acc %.5f], [acc_cls %.5f], [mean_iu %.5f], [fwavacc %.5f], [epoch %d]' % (
-    #    train_args['best_record']['val_loss'], train_args['best_record']['acc'], train_args['best_record']['acc_cls'],
-    #    train_args['best_record']['mean_iu'], train_args['best_record']['fwavacc'], train_args['best_record']['epoch']))
-
-    # print('--------------------------------------------------------------------')
-
-    #writer.add_scalar('val_loss', val_loss.avg, epoch)
-    #writer.add_scalar('acc', acc, epoch)
-    #writer.add_scalar('acc_cls', acc_cls, epoch)
-    #writer.add_scalar('mean_iu', mean_iu, epoch)
-    #writer.add_scalar('fwavacc', fwavacc, epoch)
-    #writer.add_scalar('lr', optimizer.param_groups[1]['lr'], epoch)
-
+    val_log.write('Mean IoU for epoch {} is {}'.format(epoch,mean_iu) + '\n')
+    root = '/home/bilalabbasi/projects/pytorch-semantic-segmentation/logs/pths'
+    if epoch%20 == 0:
+        torch.save(net.state_dict(), os.path.join(root,model + '_epoch_' +str(epoch)+ '_iou_' + str(mean_iu)+ '.pth'))
+        
     net.train()
     return val_loss.avg
 
-
+def poly_lr_step(optimizer,lr0,iter,max_iter,power=0.9):
+    lr = lr0 * (1-float(iter)/max_iter)**power
+    for param_group in optimizer.param_groups:
+        param_group['lr'] = lr
 if __name__ == '__main__':
     main(args)

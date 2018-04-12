@@ -3,7 +3,7 @@ import os
 import numpy as np
 import scipy.io as sio
 import torch
-from PIL import Image
+from PIL import Image, ImageOps
 from torch.utils import data
 
 num_classes = 21
@@ -33,7 +33,7 @@ def colorize_mask(mask):
 
 
 def make_dataset(mode,set):
-    assert mode in ['train', 'val', 'test']
+    assert mode in ['train', 'val', 'eval']
     assert set in ['benchmark','voc']
     items = []
     if mode == 'train':
@@ -65,7 +65,7 @@ def make_dataset(mode,set):
         img_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'JPEGImages')
         mask_path = os.path.join(root, 'VOCdevkit', 'VOC2012', 'SegmentationClass')
         data_list = [l.strip('\n') for l in open(os.path.join(
-            root, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Segmentation', 'test.txt')).readlines()]
+            root, 'VOCdevkit', 'VOC2012', 'ImageSets', 'Segmentation', 'seg11valid.txt')).readlines()]
         for it in data_list:
             item = (os.path.join(img_path, it + '.jpg'), it, os.path.join(mask_path, it + '.png'))
             items.append(item)
@@ -104,6 +104,25 @@ class VOC(data.Dataset):
         else:
             mask = Image.open(mask_path)
 
+        Hnew,Wnew = 512,512
+        dH = int(Hnew - img.size[0])
+        dW = int(Wnew - img.size[1])
+        if dH%2==0:
+            dH1 = dH/2
+            dH2 = dH/2
+        else:
+            dH1 = (dH-1)/2
+            dH2 = dH1+1
+        if dW%2==0:
+            dW1 = dW/2
+            dW2 = dW/2
+        else:
+            dW1 = (dW-1)/2
+            dW2 = dW1+1
+        padding = (dH1,dW1,dH2,dW2)
+        img = ImageOps.expand(img,padding)
+        mask = ImageOps.expand(mask,padding)
+        
         if self.joint_transform is not None:
             img, mask = self.joint_transform(img, mask)
 
